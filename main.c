@@ -221,7 +221,7 @@ void readline(char **line) {
 void repl(Env *env) {
     char *line = NULL;
     while (1) {
-        printf("> ");
+        printf("|> ");
         readline(&line);
 
         if (strcmp(line, "quit\n") == 0) exit(0);
@@ -241,7 +241,7 @@ void repl(Env *env) {
 }
 
 void print_help(void) {
-    puts("usage: NAME [FILE]");
+    puts("usage: scc [file]");
 }
 
 char *readfile(char *file_location) {
@@ -428,7 +428,7 @@ void lexer_skip_whitespace(Lexer *self) {
 
 void lexer_ignore_comments(Lexer *self) {
     while (self->current_char != '\n') lexer_advance(self);
-    lexer_skip_whitespace(self);
+    lexer_advance(self);
 }
 
 Token lexer_get_next_token(Lexer *self) {

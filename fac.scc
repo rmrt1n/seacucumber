@@ -1,0 +1,10 @@
+# factorials
+#
+let n = 5;
+
+let fac = fn (n) ->
+  if n <= 1 then 1
+  else n * fac(n - 1);
+
+puts(fac(n));
+

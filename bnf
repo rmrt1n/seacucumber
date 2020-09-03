@@ -1,0 +1,37 @@
+program -> form* EOF
+
+form -> (expression | assignment) ";"
+
+assignment -> "let" IDENT "=" expression
+
+expression -> "if" logic_or "then" expression (else expression)?
+            | "fn" "(" params? ")" "->" expression 
+            | "puts" "(" expression ")"
+            | block
+            | logic_or
+
+params -> IDENT ("," IDENT)*
+
+block -> "do" form* "done"
+
+logic_or -> logic_and ("or" logic_and)*
+
+logic_and -> equality ("and" equality)*
+
+equality -> comparison (("==" | "!=") comparison)*
+
+comparison -> addition (("<" | ">" | "<=" | ">=") addition)*
+
+addition -> multiplication (("+" | "-") multiplication)*
+
+multiplication -> unary (("*" | "/") unary)*
+
+unary -> ("!" | "-") unary | call
+
+call -> primary ("(" args? ")")*
+
+args -> expression ("," expression)*
+
+primary -> NUMBER | STRING | IDENT
+         | "true" | "false" | "nil"
+         | "(" expression ")" | "gets()"

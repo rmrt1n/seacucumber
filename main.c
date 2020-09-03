@@ -368,7 +368,7 @@ void print_ast(AstNode *node) {
             break;
         case AST_FNCALL:
             printf("FNCALL\n");
-            printf("fn name ", node->value.ident_name);
+            printf("fn name %s", node->value.ident_name);
             puts("");
             printf("args ");
             for (int i = 0; i < node->arg_count; i++) {
@@ -428,7 +428,8 @@ void lexer_skip_whitespace(Lexer *self) {
 
 void lexer_ignore_comments(Lexer *self) {
     while (self->current_char != '\n') lexer_advance(self);
-    lexer_advance(self);
+    lexer_skip_whitespace(self);
+    while (self->current_char == '#') lexer_ignore_comments(self);
 }
 
 Token lexer_get_next_token(Lexer *self) {

@@ -1,5 +1,5 @@
 # factorials
-#
+# tests
 let n = 5;
 
 let fac = fn (n) ->

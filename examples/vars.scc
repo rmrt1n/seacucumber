@@ -1,5 +1,4 @@
 # this is a comment
-# another comment
 
 let int = 1;
 let str = "hello world";

@@ -1,0 +1,39 @@
+# comments start with '#'
+# only single line comments
+
+# assigning value to variables
+let inp = gets();
+puts(inp);
+
+# print function
+puts("hello world");
+
+# available datatypes: number (c double), string, bool, nil
+let varname = "value";
+let number = 14;
+
+# if expression
+if number < 14 then puts("less than 14")
+else if number > 14 then puts("greater than 14")
+else puts("14!");
+
+# function definition
+let square = fn (n) -> n * n;
+
+# function call
+puts(square(2));
+
+# anonymous function
+(fn (n) -> if n < 0 then -n else n) (-3);
+
+# do block
+let var = 2;
+do
+  puts(var);
+  let var = 3;
+  puts(var);
+done;
+
+puts(var);
+
+

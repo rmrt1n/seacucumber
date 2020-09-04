@@ -6,7 +6,6 @@ assignment -> "let" IDENT "=" expression
 
 expression -> "if" logic_or "then" expression (else expression)?
             | "fn" "(" params? ")" "->" expression 
-            | "puts" "(" expression ")"
             | block
             | logic_or
 
@@ -34,4 +33,5 @@ args -> expression ("," expression)*
 
 primary -> NUMBER | STRING | IDENT
          | "true" | "false" | "nil"
-         | "(" expression ")" | "gets()"
+         | "(" expression ")"
+

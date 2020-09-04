@@ -13,8 +13,8 @@ typedef struct Token {
         // keywords
         TOKEN_LET, TOKEN_AND, TOKEN_OR,
         TOKEN_IF, TOKEN_THEN, TOKEN_ELSE,
-        TOKEN_PUTS, TOKEN_GETS, TOKEN_DO, TOKEN_DONE,
-        TOKEN_FN, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
+        TOKEN_DO, TOKEN_DONE, TOKEN_FN,
+        TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
 
         // symbols and operators
         TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_SEMI,
@@ -36,6 +36,8 @@ typedef struct Lexer {
     int line;
 } Lexer;
 
+typedef struct AstNode *(*Builtin) (int, struct AstNode **);
+
 typedef struct AstNode {
     enum {
         // leaf nodes
@@ -45,9 +47,7 @@ typedef struct AstNode {
         // multiple branches
         AST_BINOP, AST_UNOP, AST_IF,
         AST_ASSIGNMENT, AST_FNCALL, AST_BLOCK,
-
-        // io
-        AST_PUTS, AST_GETS,
+        AST_CFN,
 
         AST_NOOP
     } type;
@@ -68,7 +68,6 @@ typedef struct AstNode {
     struct AstNode *body;
 
     // function calls
-    // struct AstNode *fn_name;
     struct AstNode **args;
     int arg_count;
     // for anonymous fns
@@ -77,6 +76,9 @@ typedef struct AstNode {
     // block
     struct AstNode **children;
     int child_count;
+
+    // cfn
+    Builtin cfun_ptr;
 
     // leaf nodes
     Token token;
@@ -130,7 +132,7 @@ AstNode *ast_init_block(AstNode **children, int child_count);
 AstNode *ast_init_fn(AstNode **params, int param_count, AstNode *body);
 AstNode *ast_init_fncall(
     char *fn_name, AstNode **args, int arg_count, AstNode *lambda);
-AstNode *ast_init_puts(AstNode *body);
+AstNode *ast_init_cfn(char *name, Builtin cfun_ptr);
 AstNode *ast_init_noop(void);
 
 // parser functions
@@ -152,13 +154,15 @@ AstNode *parser_parse_primary(Parser *self);
 
 // env functions
 Env *create_env(Env *parent);
-void env_insert(Env **env, char *varname, AstNode *value);
+void env_insert_var(Env **env, char *varname, AstNode *value);
 int env_check_var(Env *env, char *varname);
 AstNode *env_find_var(Env *env, char *varname);
+void env_insert_builtin(Env **env, AstNode *cfn);
+void env_insert_global_builtin(Env **env);
 
 // builtin functions
-void builtin_puts(AstNode *node);
-char *builtin_gets(void);
+AstNode *builtin_puts(int argc, AstNode **args);
+AstNode *builtin_gets(int argc, AstNode **args);
 
 // visitor functions
 AstNode *visitor_visit_root(AstNode **root, int child_count, Env *env);
@@ -171,6 +175,7 @@ AstNode *visitor_visit_binop(AstNode *node, Env *env);
 AstNode *visitor_visit_unop(AstNode *node, Env *env);
 AstNode *visitor_visit_block(AstNode *node, Env *env);
 AstNode *visitor_visit_fncall(AstNode *node, Env *env);
+AstNode *visitor_visit_builtin(AstNode *node, Env *env);
 
 // main helper funcs
 void readline(char **line);
@@ -187,6 +192,7 @@ void debug_print_ast(AstNode **root, int child_count);
 
 int main(int argc, char *argv[]) {
     Env *global_env = create_env(NULL);
+    env_insert_global_builtin(&global_env);
 
     if (argc == 2) {
         char *contents = readfile(argv[1]);       
@@ -236,7 +242,7 @@ void repl(Env *env) {
         // debug_print_ast(root, child_count);
 
         AstNode *result = visitor_visit_root(root, child_count, env);
-        builtin_puts(result);
+        builtin_puts(child_count, &result);
     }
 }
 
@@ -298,7 +304,6 @@ void print_tokens(Token *token) {
         case TOKEN_MUL:    type = "MUL"; break;
         case TOKEN_DIV:    type = "DIV"; break;
         case TOKEN_MOD:    type = "MOD"; break;
-        case TOKEN_PUTS:   type = "PUTS"; break;
         case TOKEN_DO:     type = "DO"; break;
         case TOKEN_DONE:   type = "DONE"; break;
         case TOKEN_EOF:    type = "EOF"; break;
@@ -360,11 +365,6 @@ void print_ast(AstNode *node) {
             print_ast(node->left);
             printf("value ");
             print_ast(node->right);
-            break;
-        case AST_PUTS:
-            printf("PUTS\n");
-            printf("to print ");
-            print_ast(node->body);
             break;
         case AST_FNCALL:
             printf("FNCALL\n");
@@ -478,10 +478,6 @@ Token lexer_get_next_token(Lexer *self) {
                 token_type = TOKEN_AND;
             } else if (strcmp(ident, "or") == 0) {
                 token_type = TOKEN_OR;
-            } else if (strcmp(ident, "puts") == 0) {
-                token_type = TOKEN_PUTS;
-            } else if (strcmp(ident, "gets") == 0) {
-                token_type = TOKEN_GETS;
             } else if (strcmp(ident, "do") == 0) {
                 token_type = TOKEN_DO;
             } else if (strcmp(ident, "done") == 0) {
@@ -722,18 +718,19 @@ AstNode *ast_init_fncall(
     return node;
 }
 
-AstNode *ast_init_puts(AstNode *body) {
-    AstNode *node = malloc(sizeof(struct AstNode));
-
-    node->type = AST_PUTS;
-    node->body = body;
-
-    return node;
-}
-
 AstNode *ast_init_noop(void) {
     AstNode *node = malloc(sizeof(struct AstNode));
     node->type = AST_NOOP;
+    return node;
+}
+
+AstNode *ast_init_cfn(char *name, Builtin cfun_ptr) {
+    AstNode *node = malloc(sizeof(struct AstNode));
+
+    node->type = AST_CFN;
+    node->value.ident_name = name;
+    node->cfun_ptr = cfun_ptr;
+
     return node;
 }
 
@@ -851,12 +848,6 @@ AstNode *parser_parse_expr(Parser *self) {
 
             node = ast_init_fn(
                 params, param_count, parser_parse_expr(self));
-            break;
-        case TOKEN_PUTS:
-            parser_eat(self, TOKEN_PUTS);
-            parser_eat(self, TOKEN_LPAREN);
-            node = ast_init_puts(parser_parse_expr(self));
-            parser_eat(self, TOKEN_RPAREN);
             break;
         case TOKEN_DO:
             parser_eat(self, TOKEN_DO);
@@ -1008,7 +999,6 @@ AstNode *parser_parse_call(Parser *self) {
 
     if (self->current_token.type == TOKEN_LPAREN) {
         parser_eat(self, TOKEN_LPAREN);
-        // AstNode *fncall_node = ast_init_fncall(node->value.ident_name);
 
         int arg_count = 0;
         AstNode **args = malloc(sizeof(struct AstNode *));
@@ -1065,13 +1055,6 @@ AstNode *parser_parse_primary(Parser *self) {
             parser_eat(self, TOKEN_NIL);
             node = ast_init_nil();
             break;
-        case TOKEN_GETS:
-            parser_eat(self, TOKEN_GETS);
-            parser_eat(self, TOKEN_LPAREN);
-            parser_eat(self, TOKEN_RPAREN);
-            char *get_str = builtin_gets();
-            node = ast_init_str(get_str);
-            break;
         case TOKEN_EOF:
             parser_eat(self, TOKEN_EOF);
             node = ast_init_noop();
@@ -1092,7 +1075,7 @@ Env *create_env(Env *parent) {
     return env;
 }
 
-void env_insert(Env **env, char *varname, AstNode *value) {
+void env_insert_var(Env **env, char *varname, AstNode *value) {
     struct Records *record = malloc(sizeof(struct Records));
 
     record->varname = varname;
@@ -1134,42 +1117,73 @@ AstNode *env_find_var(Env *env, char *varname) {
     }
 }
 
-// builtin functions
-void builtin_puts(AstNode *node) {
-    switch (node->type) {
-        case AST_NUMBER:
-            if (fmod(node->value.num_value, 1) == 0) {
-                printf("%d\n", (int)node->value.num_value);
-            } else {
-                printf("%lf\n", node->value.num_value);
-            }
-            break;
-        case AST_STRING:
-            printf("%s\n", node->value.str_value);
-            break;
-        case AST_BOOL:
-            if (node->value.bool_value == 1) {
-                printf("true\n");
-            } else {
-                printf("false\n");
-            }
-            break;
-        case AST_NIL:
-            puts("nil");
-            break;
-        case AST_FN:
-            if (node->value.ident_name == NULL) {
-                puts("<lambda expression>");
-            } else {
-                printf("<function %s>\n", node->value.ident_name);
-            }
-            break;
-        default:
-            printf("");
-    }
+void env_insert_builtin(Env **env, AstNode *cfn) {
+    struct Records *record = malloc(sizeof(struct Records));
+
+    record->varname = cfn->value.ident_name;
+    record->value = cfn;
+    record->next = (*env)->records;
+
+    (*env)->records = record;
 }
 
-char *builtin_gets(void) {
+void env_insert_global_builtin(Env **env) {
+    env_insert_builtin(env, ast_init_cfn("puts", &builtin_puts));
+    env_insert_builtin(env, ast_init_cfn("gets", &builtin_gets));
+}
+
+// builtin functions
+AstNode *builtin_puts(int argc, AstNode **args) {
+    for (int i = 0; i < argc; i++) {
+        switch (args[i]->type) {
+            case AST_NUMBER:
+                if (fmod(args[i]->value.num_value, 1) == 0) {
+                    printf("%d", (int)args[i]->value.num_value);
+                } else {
+                    printf("%lf", args[i]->value.num_value);
+                }
+                break;
+            case AST_STRING:
+                printf("%s", args[i]->value.str_value);
+                break;
+            case AST_BOOL:
+                if (args[i]->value.bool_value == 1) {
+                    printf("true");
+                } else {
+                    printf("false");
+                }
+                break;
+            case AST_NIL:
+                printf("nil");
+                break;
+            case AST_FN:
+                if (args[i]->value.ident_name == NULL) {
+                    printf("<lambda expression>");
+                } else {
+                    printf("<function %s>", args[i]->value.ident_name);
+                }
+                break;
+            default:
+                printf("");
+                return ast_init_noop();
+        }
+    }
+    printf("\n");
+    return ast_init_noop();
+}
+
+AstNode *builtin_gets(int argc, AstNode **args) {
+    if (argc > 1) {
+        printf("gets expect at most 1 argument, got %d\n", argc);
+        exit(1);
+    } else if (argc == 1) {
+        if (args[0]->type != AST_STRING) {
+            puts("gets only takes string as an argument");
+            exit(1);
+        }
+        printf("%s", args[0]->value.str_value);
+    }
+
     char *result = NULL;
     size_t size = 0;
     ssize_t len = getline(&result, &size, stdin);
@@ -1180,7 +1194,7 @@ char *builtin_gets(void) {
     }
 
     result[len - 1] = '\0';
-    return result;
+    return ast_init_str(result);
 }
 
 // visitor functions
@@ -1210,9 +1224,6 @@ AstNode *visitor_visit_node(AstNode *node, Env *env) {
             return visitor_visit_if(node, env);
         case AST_FNCALL:
             return visitor_visit_fncall(node, env);
-        case AST_PUTS:
-            builtin_puts(visitor_visit_node(node->body, env));
-            return ast_init_noop();
         case AST_UNOP:
             return visitor_visit_unop(node, env);
         case AST_BLOCK:
@@ -1231,7 +1242,7 @@ int visitor_seek_truth(AstNode *node) {
 }
 
 AstNode *visitor_visit_assignment(AstNode *node, Env *env) {
-    env_insert(&env, node->left->value.ident_name, node->right);
+    env_insert_var(&env, node->left->value.ident_name, node->right);
     return ast_init_noop();
 }
 
@@ -1346,6 +1357,18 @@ AstNode *visitor_visit_block(AstNode *node, Env *env) {
     return expr;
 }
 
+AstNode *visitor_visit_builtin(AstNode *node, Env *env) {
+    AstNode *cfn = env_find_var(env, node->value.ident_name);
+
+    AstNode **evaled_args = malloc(node->arg_count * sizeof(struct AstNode *));
+    for (int i = 0; i < node->arg_count; i++) {
+        evaled_args[i] = visitor_visit_node(node->args[i], env);
+    }
+
+    return cfn->cfun_ptr(node->arg_count, evaled_args);
+}
+
+
 AstNode *visitor_visit_fncall(AstNode *node, Env *env) {
     // check if function exists
     if (node->value.ident_name != NULL) {
@@ -1353,9 +1376,12 @@ AstNode *visitor_visit_fncall(AstNode *node, Env *env) {
             printf("func \"%s\" is not defined on line %d\n",
                    node->value.ident_name, node->token.line);
             exit(1);
-        } 
+        }
         // get fn ast node
         AstNode *fn = env_find_var(env, node->value.ident_name);
+
+        // if is builtin function
+        if (fn->type == AST_CFN) return visitor_visit_builtin(node, env);
 
         // check if args count is same as params count
         if (node->arg_count != fn->param_count) {
@@ -1371,7 +1397,7 @@ AstNode *visitor_visit_fncall(AstNode *node, Env *env) {
         // insert into local env params with values of args
         for (int i = 0; i < node->arg_count; i++) {
             AstNode *arg = visitor_visit_node(node->args[i], env);
-            env_insert(&local_env, fn->params[i]->value.ident_name, arg);
+            env_insert_var(&local_env, fn->params[i]->value.ident_name, arg);
         }
 
         return visitor_visit_node(fn->body, local_env);
@@ -1388,7 +1414,7 @@ AstNode *visitor_visit_fncall(AstNode *node, Env *env) {
 
     for (int i = 0; i < node->arg_count; i++) {
         AstNode *arg = visitor_visit_node(node->args[i], env);
-        env_insert(
+        env_insert_var(
             &local_env, node->lambda->params[i]->value.ident_name, arg);
     }
 

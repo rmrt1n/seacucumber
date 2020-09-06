@@ -1,6 +1,6 @@
 program -> form* EOF
 
-form -> (expression | assignment) ";"
+form -> (expression | assignment)
 
 assignment -> "let" IDENT "=" expression
 
@@ -11,7 +11,7 @@ expression -> "if" logic_or "then" expression (else expression)?
 
 params -> IDENT ("," IDENT)*
 
-block -> "do" form* "done"
+block -> "do" form* "done" ";"
 
 logic_or -> logic_and ("or" logic_and)*
 

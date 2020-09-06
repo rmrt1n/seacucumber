@@ -775,21 +775,16 @@ AstNode **parser_parse_prog(Parser *self, int *child_count) {
 AstNode *parser_parse_form(Parser *self) {
     AstNode *node;
 
-    if (self->current_token.type == TOKEN_LET) {
-        node = parser_parse_assignment(self);
-        parser_eat(self, TOKEN_SEMI);
-    } else if (self->current_token.type == TOKEN_EOF ||
-               self->current_token.type == TOKEN_SEMI) {
-        if (self->current_token.type == TOKEN_EOF) {
+    switch (self->current_token.type) {
+        case TOKEN_LET:
+            node = parser_parse_assignment(self);
+            break;
+        case TOKEN_EOF:
             parser_eat(self, TOKEN_EOF);
-        } else {
-            parser_eat(self, TOKEN_SEMI);
-            parser_eat(self, TOKEN_EOF);
-        }
-        node = ast_init_noop();
-    } else {
-        node = parser_parse_expr(self);
-        parser_eat(self, TOKEN_SEMI);
+            node = ast_init_noop();
+            break;
+        default:
+            node = parser_parse_expr(self);
     }
 
     return node;
@@ -857,6 +852,7 @@ AstNode *parser_parse_expr(Parser *self) {
             while (self->current_token.type != TOKEN_DONE) {
                 children[child_count] = parser_parse_form(self);
                 child_count++;
+                parser_eat(self, TOKEN_SEMI);
             }
             
             parser_eat(self, TOKEN_DONE);
@@ -1059,6 +1055,10 @@ AstNode *parser_parse_primary(Parser *self) {
             parser_eat(self, TOKEN_EOF);
             node = ast_init_noop();
             break;
+        default:
+            printf("unexpected token ");
+            print_tokens(&self->current_token);
+            exit(1);
     }
 
     return node;
@@ -1377,6 +1377,7 @@ AstNode *visitor_visit_fncall(AstNode *node, Env *env) {
                    node->value.ident_name, node->token.line);
             exit(1);
         }
+
         // get fn ast node
         AstNode *fn = env_find_var(env, node->value.ident_name);
 

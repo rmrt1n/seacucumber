@@ -1,0 +1,26 @@
+let x = 1
+let y = 2
+
+let square = fn (n) -> n * n
+print_endline (string_of_int (square (x + y)))
+
+let z = (fn (a, b) -> square (a) + square (b)) (square (x), square (y))
+
+print_string ("x = ")
+print_endline (string_of_int (x))
+
+print_string ("y = ")
+print_endline (string_of_int (y))
+
+print_string ("x^2 + y^2 = ")
+print_endline (string_of_int (z))
+
+let fac = fn (n) -> if n <= 1 then 1 else n * fac (n - 1)
+print_string ("factorial of 5 is ")
+print_endline (string_of_int (fac (5)))
+
+do
+  print_string ("enter string: ");
+  print_endline (read_line ());
+done
+

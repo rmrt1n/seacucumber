@@ -1,4 +1,8 @@
-sources = $(wildcard src/*.c)
+tree-walk = $(filter-out src/transpiler.c, $(wildcard src/*.c))
+transpiler = $(filter-out src/main.c, $(wildcard src/*.c))
 
-all:
-	gcc $(sources) -o scc -lm -g
+scc:
+	gcc $(tree-walk) -o bin/scc -lm -g
+
+tscc:
+	gcc $(transpiler) -o bin/tscc -lm -g

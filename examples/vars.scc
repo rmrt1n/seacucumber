@@ -1,13 +1,13 @@
 # this is a comment
 
-let int = 1;
-let str = "hello world";
-let bool = true;
-let n = nil;
-let float = 2.3;
+let int = 1
+let str = "hello world"
+let bool = true
+let n = nil
+let float = 2.3
 
-puts(int);
-puts(float);
-puts(str);
-puts(bool);
-puts(n);
+puts(int)
+puts(float)
+puts(str)
+puts(bool)
+puts(n)

@@ -1,8 +1,8 @@
-let x = -2;
+let x = -2
 
-let square = fn (n) -> n * n;
+let square = fn (n) -> n * n
 
-let abs = fn (n) -> if n < 0 then -x else x;
+let abs = fn (n) -> if n < 0 then -x else x
 
-puts(square(2));
-puts(abs(2));
+puts(square(2))
+puts(abs(2))

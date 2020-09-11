@@ -1,2 +1,4 @@
+sources = $(wildcard src/*.c)
+
 all:
-	gcc -g main.c -o scc -lm
+	gcc $(sources) -o scc -lm -g

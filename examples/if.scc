@@ -1,6 +1,6 @@
-let cond = 2 < 3;
+let cond = 2 < 3
 
 if cond then puts("2 is less than 3")
-else puts("2 is greater than 3");
+else puts("2 is greater than 3")
 
-if false then puts(1) else puts(0);
+if false then puts(1) else puts(0)

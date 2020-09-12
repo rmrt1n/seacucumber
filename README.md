@@ -21,10 +21,10 @@ make
 Seacucumber to OCaml transpiler.
 ```bash
 # run an interactive prompt
-scc
+./scc
 # interpret seacucumber code 
-scc FILENAME
+./scc FILENAME
 # tscc will compile seacucumber to ocaml,
 # and run ocamlc to create an executable
-tscc FILENAME
+./tscc FILENAME
 ```

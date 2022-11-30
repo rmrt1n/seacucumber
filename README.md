@@ -11,7 +11,7 @@ implementation and compiler theory.
 ![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white)
 
 
-## Getting Started
+## Build Instructions
 Instructions to build Seacucumber from source. To actually use the transpiler, 
 you will need to have [OCaml](https://ocaml.org/) installed on your system.
 ```bash

@@ -1,8 +1,8 @@
 # Seacucumber
-
-Seacucumber a small interpreter and transpiler I made to learn about how
-programming languages work. It is inspired by scheme and ocaml. Several example
-Seacucumber code is located in the examples directory.
+Seacucumber is a small, interpreted functional programming language written in 
+C. It was inspired by other languages such as scheme, elixir, and OCaml. This 
+project was done as an attempt by me to learn about programming language 
+implementation and compiler theory.
 
 ![Screeenshot of the language & interpreter](/screenshot.jpg)
 

@@ -6,7 +6,7 @@ implementation and compiler theory.
 
 ![Screeenshot of the language & interpreter](/screenshot.jpg)
 
-**Built with:**
+## Built with
 
 ![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white)
 
